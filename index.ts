@@ -12,6 +12,7 @@ const colors = {
   magenta: "\x1b[35m",
   cyan: "\x1b[36m",
   white: "\x1b[37m",
+  black: "\x1b[30m",
 };
 
 interface UsagePeriod {
@@ -58,6 +59,19 @@ const calcElapsedPct = (resetsAt: string, windowMs: number) => {
   return ((Date.now() - (resets - windowMs)) / windowMs) * 100;
 };
 
+const barGraph = (pct: number, length = 20) => {
+  const filledLength = Math.round((pct / 100) * length);
+  const emptyLength = length - filledLength;
+  return `${twoCharNum(Math.round(pct))}% ${"█".repeat(filledLength)}${"░".repeat(emptyLength)}`;
+};
+
+const twoCharNum = (num: number) => {
+  if (num < 10) {
+    return ` ${num}`;
+  }
+  return num;
+};
+
 const main = async () => {
   const input = parseInput();
   const data: UsageData = await fetchUsage(getToken());
@@ -65,21 +79,36 @@ const main = async () => {
   const fiveHourMs = 5 * 60 * 60 * 1000;
   const sevenDayMs = 7 * 24 * 60 * 60 * 1000;
 
-  const fiveHourPct = calcElapsedPct(data.five_hour.resets_at, fiveHourMs);
-  const sevenDayPct = calcElapsedPct(data.seven_day.resets_at, sevenDayMs);
+  const fiveHourElapsedPct = Math.round(
+    calcElapsedPct(data.five_hour.resets_at, fiveHourMs),
+  );
+  const sevenDayElapsedPct = Math.round(
+    calcElapsedPct(data.seven_day.resets_at, sevenDayMs),
+  );
 
   const model = input.model.display_name;
   const dir = path.basename(input.workspace.current_dir);
   const contextPct = input.context_window.used_percentage || 0;
   const isMinimax = model.toLowerCase().includes("minimax");
 
-  console.log(`${colors.cyan}[${model}] 📁 ${dir}${colors.reset}`);
-  const claudeOnly =
-    `${colors.green}5h ${Math.round(data.five_hour.utilization)}% / ${Math.round(fiveHourPct)}%${colors.reset}  ` +
-    `${colors.yellow}7d ${Math.round(data.seven_day.utilization)}% / ${Math.round(sevenDayPct)}%${colors.reset}  `;
+  const utilPercent5H = Math.round(data.five_hour.utilization);
+  const utilPercent7D = Math.round(data.seven_day.utilization);
+
+  const contextPercent = `${colors.magenta}context ${Math.round(contextPct)}% ${colors.reset}`;
   console.log(
-    `${isMinimax ? "" : claudeOnly}${colors.magenta}context ${Math.round(contextPct)}% ${colors.reset}`,
+    `${colors.cyan}[${model}] 📁 ${dir}${colors.reset}   ${contextPercent}`,
   );
+  const utilization_5H_upper = `${colors.green}5H ${barGraph(utilPercent5H)}${colors.reset}`;
+  // the "colors.green+reset" is necessary to prevent leading spaces from getting eaten by the terminal's trimming
+  const utilization_5H_lower = `${colors.green} ${colors.reset}${colors.green}  ${barGraph(fiveHourElapsedPct)}${colors.reset}`;
+
+  const utilization_7D_upper = `${colors.yellow}   7D ${barGraph(utilPercent7D)}${colors.reset}`;
+  const utilization_7D_lower = `${colors.yellow}      ${barGraph(sevenDayElapsedPct)}${colors.reset}`;
+
+  const textForClaudeOnly =
+    `${utilization_5H_upper} ${utilization_7D_upper}\n` +
+    `${utilization_5H_lower} ${utilization_7D_lower}\n`;
+  console.log(`${isMinimax ? "" : textForClaudeOnly}`);
 };
 
 main();
