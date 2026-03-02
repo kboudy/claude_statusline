@@ -103,17 +103,9 @@ const outputClaudeUsage = async (input: ClaudeInput) => {
     calcElapsedPct(data.seven_day.resets_at, sevenDayMs),
   );
 
-  const model = input.model.display_name;
-  const dir = path.basename(input.workspace.current_dir);
-  const contextPct = input.context_window.used_percentage || 0;
-
   const utilPercent5H = Math.round(data.five_hour.utilization);
   const utilPercent7D = Math.round(data.seven_day.utilization);
 
-  const contextPercent = `${colors.magenta}context ${Math.round(contextPct)}% ${colors.reset}`;
-  console.log(
-    `${colors.cyan}[${model}] 📁 ${dir}${colors.reset}   ${contextPercent}`,
-  );
   const utilization_5H_upper = `${colors.green}5H ${barGraph(utilPercent5H)}${colors.reset}`;
   // the "colors.green+reset" is necessary to prevent leading spaces from getting eaten by the terminal's trimming
   const utilization_5H_lower = `${colors.green} ${colors.reset}${colors.green}  ${barGraph(fiveHourElapsedPct)}${colors.reset}`;
