@@ -25,8 +25,26 @@ interface UsageData {
   seven_day: UsagePeriod;
 }
 
-const parseInput = () => {
+interface ClaudeInput {
+  model: {
+    display_name: string;
+  };
+  workspace: {
+    current_dir: string;
+  };
+  context_window: {
+    used_percentage?: number;
+  };
+}
+
+const parseInput = (): ClaudeInput => {
   const json = JSON.parse(process.argv[2] || "");
+  fs.writeFileSync(
+    "/tmp/claude-usage.log",
+    JSON.stringify(json, null, 2),
+    "utf-8",
+  );
+
   if (!json || typeof json !== "object") {
     console.error("Invalid input: Expected a JSON object");
     process.exit(1);
@@ -72,8 +90,7 @@ const twoCharNum = (num: number) => {
   return num;
 };
 
-const main = async () => {
-  const input = parseInput();
+const outputClaudeUsage = async (input: ClaudeInput) => {
   const data: UsageData = await fetchUsage(getToken());
 
   const fiveHourMs = 5 * 60 * 60 * 1000;
@@ -89,7 +106,6 @@ const main = async () => {
   const model = input.model.display_name;
   const dir = path.basename(input.workspace.current_dir);
   const contextPct = input.context_window.used_percentage || 0;
-  const isMinimax = model.toLowerCase().includes("minimax");
 
   const utilPercent5H = Math.round(data.five_hour.utilization);
   const utilPercent7D = Math.round(data.seven_day.utilization);
@@ -105,10 +121,31 @@ const main = async () => {
   const utilization_7D_upper = `${colors.yellow}   7D ${barGraph(utilPercent7D)}${colors.reset}`;
   const utilization_7D_lower = `${colors.yellow}      ${barGraph(sevenDayElapsedPct)}${colors.reset}`;
 
-  const textForClaudeOnly =
+  console.log(
     `${utilization_5H_upper} ${utilization_7D_upper}\n` +
-    `${utilization_5H_lower} ${utilization_7D_lower}\n`;
-  console.log(`${isMinimax ? "" : textForClaudeOnly}`);
+      `${utilization_5H_lower} ${utilization_7D_lower}\n`,
+  );
+};
+
+const outputModelAndContext = async (input: ClaudeInput) => {
+  const model = input.model.display_name;
+  const dir = path.basename(input.workspace.current_dir);
+  const contextPct = input.context_window.used_percentage || 0;
+
+  const contextPercent = `${colors.magenta}context ${Math.round(contextPct)}% ${colors.reset}`;
+  console.log(
+    `${colors.cyan}[${model}] 📁 ${dir}${colors.reset}   ${contextPercent}`,
+  );
+};
+
+const main = async () => {
+  const input = parseInput();
+  const model = input.model.display_name;
+  const isClaude = !model.toLowerCase().includes("minimax");
+  await outputModelAndContext(input);
+  if (isClaude) {
+    await outputClaudeUsage(input);
+  }
 };
 
 main();
