@@ -39,11 +39,6 @@ interface ClaudeInput {
 
 const parseInput = (): ClaudeInput => {
   const json = JSON.parse(process.argv[2] || "");
-  fs.writeFileSync(
-    "/tmp/claude-usage.log",
-    JSON.stringify(json, null, 2),
-    "utf-8",
-  );
 
   if (!json || typeof json !== "object") {
     console.error("Invalid input: Expected a JSON object");
@@ -90,8 +85,27 @@ const twoCharNum = (num: number) => {
   return num;
 };
 
-const outputClaudeUsage = async (input: ClaudeInput) => {
-  const data: UsageData = await fetchUsage(getToken());
+const isFileOlderThan2Minutes = (filePath: string) => {
+  if (!fs.existsSync(filePath)) {
+    return false;
+  }
+  const stats = fs.statSync(filePath);
+  const ageMs = Date.now() - stats.mtime.getTime();
+  return ageMs > 2 * 60 * 1000;
+};
+
+const outputClaudeUsage = async () => {
+  const usageFile = "/tmp/claude-usage-data.json";
+  const fetchFromApi =
+    !fs.existsSync(usageFile) || !isFileOlderThan2Minutes(usageFile);
+
+  let data: UsageData;
+  if (fetchFromApi) {
+    data = await fetchUsage(getToken());
+    fs.writeFileSync(usageFile, JSON.stringify(data, null, 2), "utf-8");
+  } else {
+    data = JSON.parse(fs.readFileSync(usageFile, "utf-8")) as UsageData;
+  }
 
   const fiveHourMs = 5 * 60 * 60 * 1000;
   const sevenDayMs = 7 * 24 * 60 * 60 * 1000;
@@ -136,7 +150,7 @@ const main = async () => {
   const isClaude = !model.toLowerCase().includes("minimax");
   await outputModelAndContext(input);
   if (isClaude) {
-    await outputClaudeUsage(input);
+    //await outputClaudeUsage();
   }
 };
 
