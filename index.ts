@@ -85,7 +85,7 @@ const main = async () => {
   await outputModelAndContext(input);
   if (isClaude) {
     try {
-      //await outputClaudeUsage();
+      await outputClaudeUsage();
     } catch (ex) {
       const tempErrorLogPath = "/tmp/claude_usage_error.log";
       fs.appendFileSync(
