@@ -53,18 +53,19 @@ const twoCharNum = (num: number) => {
 
 const outputClaudeUsage = async () => {
   const usage = await getUsage();
+  if (usage) {
+    const utilization_5H_upper = `${colors.green}5H ${barGraph(usage.fiveHour.usedPercent)}${colors.reset}`;
+    // the "colors.green+reset" is necessary to prevent leading spaces from getting eaten by the terminal's trimming
+    const utilization_5H_lower = `${colors.green} ${colors.reset}${colors.green}  ${barGraph(usage.fiveHour.elapsedPercent)}${colors.reset}`;
 
-  const utilization_5H_upper = `${colors.green}5H ${barGraph(usage.fiveHour.usedPercent)}${colors.reset}`;
-  // the "colors.green+reset" is necessary to prevent leading spaces from getting eaten by the terminal's trimming
-  const utilization_5H_lower = `${colors.green} ${colors.reset}${colors.green}  ${barGraph(usage.fiveHour.elapsedPercent)}${colors.reset}`;
+    const utilization_7D_upper = `${colors.yellow}   7D ${barGraph(usage.sevenDay.usedPercent)}${colors.reset}`;
+    const utilization_7D_lower = `${colors.yellow}      ${barGraph(usage.sevenDay.elapsedPercent)}${colors.reset}`;
 
-  const utilization_7D_upper = `${colors.yellow}   7D ${barGraph(usage.sevenDay.usedPercent)}${colors.reset}`;
-  const utilization_7D_lower = `${colors.yellow}      ${barGraph(usage.sevenDay.elapsedPercent)}${colors.reset}`;
-
-  console.log(
-    `${utilization_5H_upper} ${utilization_7D_upper}\n` +
-      `${utilization_5H_lower} ${utilization_7D_lower}\n`,
-  );
+    console.log(
+      `${utilization_5H_upper} ${utilization_7D_upper}\n` +
+        `${utilization_5H_lower} ${utilization_7D_lower}\n`,
+    );
+  }
 };
 
 const outputModelAndContext = async (input: ClaudeInput) => {

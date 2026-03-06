@@ -55,7 +55,7 @@ interface UsageData {
   };
 }
 
-export const getUsage: () => Promise<UsageData> = async () => {
+export const getUsage: () => Promise<UsageData | null> = async () => {
   // if USAGE_CACHE_FILEPATH exists and is less than 2 minutes old, return the cached data
   if (fs.existsSync(USAGE_CACHE_FILEPATH)) {
     const stats = fs.statSync(USAGE_CACHE_FILEPATH);
@@ -81,7 +81,7 @@ export const getUsage: () => Promise<UsageData> = async () => {
   let pTexts: string[] = [];
   while (
     timeout > 0 &&
-    pTexts.filter((text) => text.includes("% used")).length < 3
+    pTexts.filter((text) => text.includes("% used")).length < 2
   ) {
     await sleep(500);
     timeout -= 500;
@@ -92,7 +92,8 @@ export const getUsage: () => Promise<UsageData> = async () => {
     });
   }
   if (timeout <= 0) {
-    throw new Error("Timed out waiting for usage data to load");
+    await browser.close();
+    return null;
   }
   await browser.close();
 
@@ -131,16 +132,16 @@ example of what pTexts looks like.  we'll assume the first "% used" is 5 hour, a
   if (fiveHourResetsString!.startsWith("Resets in")) {
     fiveHourResetsString = fiveHourResetsString!.replace("Resets ", "");
   }
-  if (oneWeekUsageString!.startsWith("Resets in")) {
-    oneWeekUsageString = oneWeekUsageString!.replace("Resets ", "");
+  if (oneWeekResetsString!.startsWith("Resets in")) {
+    oneWeekResetsString = oneWeekResetsString!.replace("Resets ", "");
   }
 
   // if either hasn't started yet, we'll just set them to the end of the window
   if (fiveHourResetsString?.toLowerCase().includes("starts when")) {
     fiveHourResetsString = "in 5 hours";
   }
-  if (oneWeekUsageString?.toLowerCase().includes("starts when")) {
-    oneWeekUsageString = "in 1 week";
+  if (oneWeekResetsString?.toLowerCase().includes("starts when")) {
+    oneWeekResetsString = "in 1 week";
   }
 
   const fiveHourUsedPercent = parseFloat(fiveHourUsageString!.split("%")[0]!);
