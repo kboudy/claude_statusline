@@ -2,6 +2,7 @@
 
 import fs from "fs";
 import path from "path";
+import { getUsage } from "./puppeteer/get_usage";
 
 const colors = {
   reset: "\x1b[0m",
@@ -14,16 +15,6 @@ const colors = {
   white: "\x1b[37m",
   black: "\x1b[30m",
 };
-
-interface UsagePeriod {
-  resets_at: string;
-  utilization: number;
-}
-
-interface UsageData {
-  five_hour: UsagePeriod;
-  seven_day: UsagePeriod;
-}
 
 interface ClaudeInput {
   model: {
@@ -95,37 +86,14 @@ const isFileOlderThan2Minutes = (filePath: string) => {
 };
 
 const outputClaudeUsage = async () => {
-  const usageFile = "/tmp/claude-usage-data.json";
-  const fetchFromApi =
-    !fs.existsSync(usageFile) || !isFileOlderThan2Minutes(usageFile);
+  const usage = await getUsage();
 
-  let data: UsageData;
-  if (fetchFromApi) {
-    data = await fetchUsage(getToken());
-    fs.writeFileSync(usageFile, JSON.stringify(data, null, 2), "utf-8");
-  } else {
-    data = JSON.parse(fs.readFileSync(usageFile, "utf-8")) as UsageData;
-  }
-
-  const fiveHourMs = 5 * 60 * 60 * 1000;
-  const sevenDayMs = 7 * 24 * 60 * 60 * 1000;
-
-  const fiveHourElapsedPct = Math.round(
-    calcElapsedPct(data.five_hour.resets_at, fiveHourMs),
-  );
-  const sevenDayElapsedPct = Math.round(
-    calcElapsedPct(data.seven_day.resets_at, sevenDayMs),
-  );
-
-  const utilPercent5H = Math.round(data.five_hour.utilization);
-  const utilPercent7D = Math.round(data.seven_day.utilization);
-
-  const utilization_5H_upper = `${colors.green}5H ${barGraph(utilPercent5H)}${colors.reset}`;
+  const utilization_5H_upper = `${colors.green}5H ${barGraph(usage.fiveHour.usedPercent)}${colors.reset}`;
   // the "colors.green+reset" is necessary to prevent leading spaces from getting eaten by the terminal's trimming
-  const utilization_5H_lower = `${colors.green} ${colors.reset}${colors.green}  ${barGraph(fiveHourElapsedPct)}${colors.reset}`;
+  const utilization_5H_lower = `${colors.green} ${colors.reset}${colors.green}  ${barGraph(usage.fiveHour.elapsedPercent)}${colors.reset}`;
 
-  const utilization_7D_upper = `${colors.yellow}   7D ${barGraph(utilPercent7D)}${colors.reset}`;
-  const utilization_7D_lower = `${colors.yellow}      ${barGraph(sevenDayElapsedPct)}${colors.reset}`;
+  const utilization_7D_upper = `${colors.yellow}   7D ${barGraph(usage.sevenDay.usedPercent)}${colors.reset}`;
+  const utilization_7D_lower = `${colors.yellow}      ${barGraph(usage.sevenDay.elapsedPercent)}${colors.reset}`;
 
   console.log(
     `${utilization_5H_upper} ${utilization_7D_upper}\n` +
@@ -150,7 +118,7 @@ const main = async () => {
   const isClaude = !model.toLowerCase().includes("minimax");
   await outputModelAndContext(input);
   if (isClaude) {
-    //await outputClaudeUsage();
+    await outputClaudeUsage();
   }
 };
 

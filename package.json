@@ -11,5 +11,9 @@
     "typescript": "^5"
   },
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "chrono-node": "^2.9.0",
+    "puppeteer": "^24.38.0"
+  }
 }
