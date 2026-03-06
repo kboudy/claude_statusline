@@ -84,7 +84,16 @@ const main = async () => {
   const isClaude = !model.toLowerCase().includes("minimax");
   await outputModelAndContext(input);
   if (isClaude) {
-    await outputClaudeUsage();
+    try {
+      //await outputClaudeUsage();
+    } catch (ex) {
+      const tempErrorLogPath = "/tmp/claude_usage_error.log";
+      fs.appendFileSync(
+        tempErrorLogPath,
+        `${new Date().toISOString()} - Error fetching usage data: ${ex}\n`,
+      );
+      console.error("Error fetching usage data:", ex);
+    }
   }
 };
 
