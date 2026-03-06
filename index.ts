@@ -38,31 +38,6 @@ const parseInput = (): ClaudeInput => {
   return json;
 };
 
-const getToken = () => {
-  const credentials = JSON.parse(
-    fs.readFileSync(`/home/keith/.claude/.credentials.json`, "utf-8"),
-  );
-  return credentials.claudeAiOauth.accessToken;
-};
-
-const fetchUsage = async (token: string): Promise<UsageData> => {
-  const res = await fetch("https://api.anthropic.com/api/oauth/usage", {
-    headers: {
-      Accept: "application/json, text/plain, */*",
-      "Content-Type": "application/json",
-      "User-Agent": "claude-code/2.0.31",
-      Authorization: `Bearer ${token}`,
-      "anthropic-beta": "oauth-2025-04-20",
-    },
-  });
-  return res.json() as Promise<UsageData>;
-};
-
-const calcElapsedPct = (resetsAt: string, windowMs: number) => {
-  const resets = new Date(resetsAt).getTime();
-  return ((Date.now() - (resets - windowMs)) / windowMs) * 100;
-};
-
 const barGraph = (pct: number, length = 20) => {
   const filledLength = Math.round((pct / 100) * length);
   const emptyLength = length - filledLength;
@@ -74,15 +49,6 @@ const twoCharNum = (num: number) => {
     return ` ${num}`;
   }
   return num;
-};
-
-const isFileOlderThan2Minutes = (filePath: string) => {
-  if (!fs.existsSync(filePath)) {
-    return false;
-  }
-  const stats = fs.statSync(filePath);
-  const ageMs = Date.now() - stats.mtime.getTime();
-  return ageMs > 2 * 60 * 1000;
 };
 
 const outputClaudeUsage = async () => {
