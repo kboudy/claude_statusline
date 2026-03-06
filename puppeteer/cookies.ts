@@ -2,19 +2,30 @@ import { Database } from "bun:sqlite";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
-import type { Cookie, Page } from "puppeteer";
+import type { Page } from "playwright";
 
 export const FIREFOX_UA =
   "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0";
+
+interface FirefoxCookie {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires: number;
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: "None" | "Lax" | "Strict" | undefined;
+}
 
 /**
  * Read cookies for the given domain(s) from Firefox's cookies.sqlite.
  * Pass a single domain string or an array (e.g. ["x.com", "twitter.com"]).
  */
-export function getFirefoxCookies(domains: string | string[]): Cookie[] {
+export function getFirefoxCookies(domains: string | string[]): FirefoxCookie[] {
   const FIREFOX_PROFILE_PATH = process.env.FIREFOX_PROFILE_PATH || "";
   if (!FIREFOX_PROFILE_PATH) {
-    console.warn("FIREFOX_PROFILE_PATH not set, proceeding without cookies");
+  console.warn("FIREFOX_PROFILE_PATH not set, proceeding without cookies");
     return [];
   }
 
@@ -84,7 +95,7 @@ export function getFirefoxCookies(domains: string | string[]): Cookie[] {
       secure: row.isSecure === 1,
       httpOnly: row.isHttpOnly === 1,
       sameSite,
-    } as Cookie;
+    } as FirefoxCookie;
   });
 }
 
@@ -97,14 +108,13 @@ export async function setupPage(
   page: Page,
   cookieDomains: string | string[],
 ): Promise<void> {
-  await page.setViewport({ width: 1920, height: 1080 });
-  await page.setUserAgent(FIREFOX_UA);
+  await page.setViewportSize({ width: 1920, height: 1080 });
   await page.setExtraHTTPHeaders({ "Accept-Language": "en-US,en;q=0.9" });
-  await page.evaluateOnNewDocument(() => {
+  await page.addInitScript(() => {
     Object.defineProperty(navigator, "webdriver", { get: () => undefined });
   });
   const cookies = getFirefoxCookies(cookieDomains);
   if (cookies.length > 0) {
-    await page.browserContext().setCookie(...cookies);
+    await page.context().addCookies(cookies);
   }
 }

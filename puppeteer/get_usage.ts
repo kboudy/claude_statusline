@@ -2,26 +2,22 @@
 
 // since anthropic doesn't want us using the API to get token, we'll scrape the usage page
 
-import puppeteer from "puppeteer";
-import type { Browser, LaunchOptions, Page } from "puppeteer";
+import { firefox, type Browser, type Page } from "playwright";
 import { setupPage, getFirefoxCookies } from "./cookies";
 import fs from "fs";
 import * as chrono from "chrono-node";
 
 const USAGE_CACHE_FILEPATH = "/tmp/claude_usage_cache.json";
 
-const launchBrowser = async (
-  opts?: Partial<LaunchOptions>,
-): Promise<Browser> => {
-  return puppeteer.launch({
-    browser: "firefox",
+const launchBrowser = async (): Promise<Browser> => {
+  return firefox.launch({
     headless: true,
-    ...opts,
   });
 };
 
 const preparePage = async (browser: Browser) => {
-  const page: Page = await browser.newPage();
+  const context = await browser.newContext();
+  const page: Page = await context.newPage();
   const claudeUrl = "https://www.claude.ai";
   const hostname = new URL(claudeUrl).hostname;
   const cookieDomain = hostname.split(".").slice(-2).join(".");
@@ -29,7 +25,7 @@ const preparePage = async (browser: Browser) => {
   // Browser config (UA, viewport, webdriver override) — no cookies yet
   await setupPage(page, []);
 
-  // Navigate to google.com first so BiDi has a URL context for cookie injection
+  // Navigate to claude.ai first so we have a URL context for cookie injection
   await page.goto(claudeUrl, {
     waitUntil: "domcontentloaded",
     timeout: 15000,
@@ -37,7 +33,9 @@ const preparePage = async (browser: Browser) => {
 
   // Now set cookies against the established URL context
   const cookies = getFirefoxCookies(cookieDomain);
-  if (cookies.length > 0) await page.browserContext().setCookie(...cookies);
+  if (cookies.length > 0) {
+    await context.addCookies(cookies);
+  }
 
   return page;
 };
@@ -98,7 +96,7 @@ export const getUsage: () => Promise<UsageData> = async () => {
   }
   await browser.close();
 
-  /* 
+  /*
 
 example of what pTexts looks like.  we'll assume the first "% used" is 5 hour, and second is "1 week"
 
