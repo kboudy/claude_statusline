@@ -13,8 +13,12 @@ import { setCachedUsage } from "./playwright/get_usage";
 
 // determine if claude process is running
 const isClaudeRunning = () => {
-  const processes = Bun.spawnSync(["ps", "aux"]).stdout.toString();
-  return processes.includes("claude");
+  const claudeProcessLines = Bun.spawnSync(["pgrep", "-a", "claude"])
+    .stdout.toString()
+    .split("\n")
+    .filter((line) => line.trim() !== "");
+
+  return claudeProcessLines.length > 0;
 };
 
 const thisScriptRunningCount = () => {
