@@ -55,12 +55,14 @@ interface UsageData {
   };
 }
 
-export const getUsage: () => Promise<UsageData | null> = async () => {
-  // if USAGE_CACHE_FILEPATH exists and is less than 2 minutes old, return the cached data
+export const getCachedUsage: () => Promise<UsageData | null> = async () => {
+  // note that we always pull the "cached" usage json file, because we don't want a delay
+  // here (it messes with claude terminal ui).  that's done on a cron job
+  // if USAGE_CACHE_FILEPATH exists and is less than 5 minutes old, return the cached data
   if (fs.existsSync(USAGE_CACHE_FILEPATH)) {
     const stats = fs.statSync(USAGE_CACHE_FILEPATH);
     const ageMs = Date.now() - stats.mtime.getTime();
-    if (ageMs < 2 * 60 * 1000) {
+    if (ageMs < 5 * 60 * 1000) {
       const cachedData = JSON.parse(
         fs.readFileSync(USAGE_CACHE_FILEPATH, "utf-8"),
       ) as UsageData;
@@ -68,6 +70,10 @@ export const getUsage: () => Promise<UsageData | null> = async () => {
     }
   }
 
+  return null;
+};
+
+export const setCachedUsage = async (): Promise<void> => {
   const browser = await launchBrowser();
   const page: Page = await preparePage(browser);
 
@@ -91,11 +97,10 @@ export const getUsage: () => Promise<UsageData | null> = async () => {
       return texts;
     });
   }
-  if (timeout <= 0) {
-    await browser.close();
-    return null;
-  }
   await browser.close();
+  if (timeout <= 0) {
+    return;
+  }
 
   /*
 
@@ -184,6 +189,4 @@ example of what pTexts looks like.  we'll assume the first "% used" is 5 hour, a
     JSON.stringify(usage, null, 2),
     "utf-8",
   );
-
-  return usage;
 };

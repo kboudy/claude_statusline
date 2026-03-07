@@ -9,7 +9,7 @@
       "internalConsoleOptions": "neverOpen",
       "request": "launch",
       "name": "get_usage",
-      "program": "puppeteer/get_usage.ts",
+      "program": "playwright/get_usage.ts",
       "cwd": "${workspaceFolder}",
       "stopOnEntry": false,
       "watchMode": false

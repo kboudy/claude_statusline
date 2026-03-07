@@ -2,7 +2,7 @@
 
 import fs from "fs";
 import path from "path";
-import { getUsage } from "./puppeteer/get_usage";
+import { getCachedUsage } from "./playwright/get_usage";
 
 const colors = {
   reset: "\x1b[0m",
@@ -52,7 +52,7 @@ const twoCharNum = (num: number) => {
 };
 
 const outputClaudeUsage = async () => {
-  const usage = await getUsage();
+  const usage = await getCachedUsage();
   if (usage) {
     const utilization_5H_upper = `${colors.green}5H ${barGraph(usage.fiveHour.usedPercent)}${colors.reset}`;
     // the "colors.green+reset" is necessary to prevent leading spaces from getting eaten by the terminal's trimming
