@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 // Explicitly load .env from project directory (bun:dotenv loads from CWD by default)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 await import("dotenv").then((dotenv) =>
-  dotenv.config({ path: path.join(__dirname, ".env") }),
+  dotenv.config({ quiet: true, path: path.join(__dirname, ".env") }),
 );
 
 import { setCachedUsage } from "./playwright/get_usage";
@@ -25,8 +25,11 @@ const thisScriptRunningCount = () => {
   return count;
 };
 
-if (thisScriptRunningCount() > 1) {
+// I'm not sure why cron is saying there are 2 instances running, but
+// to be safe, if there are more than 2 instances of this script running, exit.
+if (thisScriptRunningCount() > 2) {
   console.log("Another instance of this script is already running. Exiting.");
+  process.exit(0);
 }
 
 if (isClaudeRunning()) {
