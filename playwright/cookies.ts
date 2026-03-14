@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import type { Page } from "playwright";
+import fs from "fs";
 
 export const FIREFOX_UA =
   "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0";
@@ -25,7 +26,7 @@ interface FirefoxCookie {
 export function getFirefoxCookies(domains: string | string[]): FirefoxCookie[] {
   const FIREFOX_PROFILE_PATH = process.env.FIREFOX_PROFILE_PATH || "";
   if (!FIREFOX_PROFILE_PATH) {
-  console.warn("FIREFOX_PROFILE_PATH not set, proceeding without cookies");
+    console.warn("FIREFOX_PROFILE_PATH not set, proceeding without cookies");
     return [];
   }
 
@@ -35,6 +36,23 @@ export function getFirefoxCookies(domains: string | string[]): FirefoxCookie[] {
       `Firefox cookies file not found at ${dbPath}, proceeding without cookies`,
     );
     return [];
+  }
+
+  // cleanup: firefox cookies older than 5 mins
+  try {
+    const files = fs
+      .readdirSync(tmpdir())
+      .filter((f) => f.startsWith("firefox-cookies-"));
+    const now = Date.now();
+    for (const file of files) {
+      const filePath = join(tmpdir(), file);
+      const stats = fs.statSync(filePath);
+      if (now - stats.mtimeMs > 5 * 60 * 1000) {
+        fs.unlinkSync(filePath);
+      }
+    }
+  } catch {
+    // Ignore errors
   }
 
   // Copy to temp file to avoid SQLITE_BUSY when Firefox is open
