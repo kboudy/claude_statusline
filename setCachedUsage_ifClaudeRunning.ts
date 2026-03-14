@@ -12,11 +12,12 @@ await import("dotenv").then((dotenv) =>
 import { setCachedUsage } from "./playwright/get_usage";
 
 // determine if claude process is running
+// ignore the remote-control session
 const isClaudeRunning = () => {
   const claudeProcessLines = Bun.spawnSync(["pgrep", "-a", "claude"])
     .stdout.toString()
     .split("\n")
-    .filter((line) => line.trim() !== "");
+    .filter((line) => !line.includes("remote-control") && line.trim() !== "");
 
   return claudeProcessLines.length > 0;
 };
