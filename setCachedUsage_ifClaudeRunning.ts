@@ -2,6 +2,9 @@
 
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
 
 // Explicitly load .env from project directory (bun:dotenv loads from CWD by default)
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -10,6 +13,25 @@ await import("dotenv").then((dotenv) =>
 );
 
 import { setCachedUsage } from "./playwright/get_usage";
+
+const removeOldFirefoxCookies = () => {
+  // cleanup: firefox cookies older than 5 mins
+  try {
+    const files = fs
+      .readdirSync(tmpdir())
+      .filter((f) => f.startsWith("firefox-cookies-"));
+    const now = Date.now();
+    for (const file of files) {
+      const filePath = join(tmpdir(), file);
+      const stats = fs.statSync(filePath);
+      if (now - stats.mtimeMs > 5 * 60 * 1000) {
+        fs.unlinkSync(filePath);
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+};
 
 // determine if claude process is running
 // ignore the remote-control session
@@ -37,6 +59,7 @@ if (thisScriptRunningCount() > 2) {
   process.exit(0);
 }
 
+removeOldFirefoxCookies();
 if (isClaudeRunning()) {
   await setCachedUsage();
 }

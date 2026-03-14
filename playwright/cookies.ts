@@ -38,23 +38,6 @@ export function getFirefoxCookies(domains: string | string[]): FirefoxCookie[] {
     return [];
   }
 
-  // cleanup: firefox cookies older than 5 mins
-  try {
-    const files = fs
-      .readdirSync(tmpdir())
-      .filter((f) => f.startsWith("firefox-cookies-"));
-    const now = Date.now();
-    for (const file of files) {
-      const filePath = join(tmpdir(), file);
-      const stats = fs.statSync(filePath);
-      if (now - stats.mtimeMs > 5 * 60 * 1000) {
-        fs.unlinkSync(filePath);
-      }
-    }
-  } catch {
-    // Ignore errors
-  }
-
   // Copy to temp file to avoid SQLITE_BUSY when Firefox is open
   const tempPath = join(tmpdir(), `firefox-cookies-${process.pid}.sqlite`);
   Bun.spawnSync(["cp", dbPath, tempPath]);
