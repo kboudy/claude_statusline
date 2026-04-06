@@ -40,11 +40,14 @@ const parseInput = (): ClaudeInput => {
 const barGraph = (pct: number, length = 20) => {
   const filledLength = Math.round((pct / 100) * length);
   const emptyLength = length - filledLength;
-  return `${twoCharNum(Math.round(pct))}% ${"█".repeat(filledLength)}${"░".repeat(emptyLength)}`;
+  return `${threeCharNum(Math.round(pct))}% ${"█".repeat(filledLength)}${"░".repeat(emptyLength)}`;
 };
 
-const twoCharNum = (num: number) => {
+const threeCharNum = (num: number) => {
   if (num < 10) {
+    return `  ${num}`;
+  }
+  if (num < 100) {
     return ` ${num}`;
   }
   return num;
