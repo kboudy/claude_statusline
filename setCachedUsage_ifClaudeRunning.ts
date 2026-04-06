@@ -40,7 +40,7 @@ const isClaudeRunning = () => {
   const claudeProcessLines = Bun.spawnSync(["pgrep", "-a", "claude"])
     .stdout.toString()
     .split("\n")
-    .filter((line) => !line.includes("cloud"));
+    .filter((line) => line.trim() !== "" && !line.includes("cloud"));
 
   return claudeProcessLines.length > 0;
 };
@@ -49,7 +49,7 @@ const isOllamaClaudeRunning = () => {
   const claudeProcessLines = Bun.spawnSync(["pgrep", "-a", "claude"])
     .stdout.toString()
     .split("\n")
-    .filter((line) => line.includes("cloud"));
+    .filter((line) => line.trim() !== "" && line.includes("cloud"));
 
   return claudeProcessLines.length > 0;
 };
