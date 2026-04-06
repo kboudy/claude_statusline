@@ -1,9 +1,16 @@
 import { Database } from "bun:sqlite";
+import { fileURLToPath } from "url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import type { Page } from "playwright";
-import fs from "fs";
+import path from "path";
+
+// Explicitly load .env from project directory (bun:dotenv loads from CWD by default)
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+await import("dotenv").then((dotenv) =>
+  dotenv.config({ quiet: true, path: path.join(__dirname, "../.env") }),
+);
 
 export const FIREFOX_UA =
   "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0";
