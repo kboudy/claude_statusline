@@ -259,5 +259,3 @@ export const setOllamaCachedUsage = async (): Promise<void> => {
     "utf-8",
   );
 };
-
-await setOllamaCachedUsage();
