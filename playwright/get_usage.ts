@@ -7,7 +7,8 @@ import { setupPage, getFirefoxCookies, FIREFOX_UA } from "./cookies";
 import fs from "fs";
 import * as chrono from "chrono-node";
 
-const USAGE_CACHE_FILEPATH = "/tmp/claude_usage_cache.json";
+const USAGE_CACHE_FILEPATH_CLAUDE = "/tmp/claude_usage_cache.json";
+const USAGE_CACHE_FILEPATH_OLLAMA = "/tmp/ollama_usage_cache.json";
 
 const launchBrowser = async (): Promise<Browser> => {
   return firefox.launch({
@@ -15,7 +16,7 @@ const launchBrowser = async (): Promise<Browser> => {
   });
 };
 
-const preparePage = async (browser: Browser) => {
+const preparePage = async (browser: Browser, domain: string) => {
   const context = await browser.newContext({ userAgent: FIREFOX_UA });
   const page: Page = await context.newPage();
 
@@ -24,7 +25,7 @@ const preparePage = async (browser: Browser) => {
 
   // Add cookies before any navigation so cf_clearance and sessionKey
   // are sent on the very first request
-  const cookies = getFirefoxCookies("claude.ai");
+  const cookies = getFirefoxCookies(domain);
   if (cookies.length > 0) {
     await context.addCookies(cookies);
   }
@@ -47,16 +48,22 @@ interface UsageData {
   };
 }
 
-export const getCachedUsage: () => Promise<UsageData | null> = async () => {
+export const getCachedUsage: (
+  isOllamaModel: boolean,
+) => Promise<UsageData | null> = async (isOllamaModel) => {
   // note that we always pull the "cached" usage json file, because we don't want a delay
   // here (it messes with claude terminal ui).  that's done on a cron job
   // if USAGE_CACHE_FILEPATH exists and is less than 5 minutes old, return the cached data
-  if (fs.existsSync(USAGE_CACHE_FILEPATH)) {
-    const stats = fs.statSync(USAGE_CACHE_FILEPATH);
+
+  const usagePath = isOllamaModel
+    ? USAGE_CACHE_FILEPATH_OLLAMA
+    : USAGE_CACHE_FILEPATH_CLAUDE;
+  if (fs.existsSync(usagePath)) {
+    const stats = fs.statSync(usagePath);
     const ageMs = Date.now() - stats.mtime.getTime();
     if (ageMs < 5 * 60 * 1000) {
       const cachedData = JSON.parse(
-        fs.readFileSync(USAGE_CACHE_FILEPATH, "utf-8"),
+        fs.readFileSync(usagePath, "utf-8"),
       ) as UsageData;
       return cachedData;
     }
@@ -65,9 +72,9 @@ export const getCachedUsage: () => Promise<UsageData | null> = async () => {
   return null;
 };
 
-export const setCachedUsage = async (): Promise<void> => {
+export const setClaudeCachedUsage = async (): Promise<void> => {
   const browser = await launchBrowser();
-  const page: Page = await preparePage(browser);
+  const page: Page = await preparePage(browser, "claude.ai");
 
   const usageUrl = "https://claude.ai/settings/usage";
   await page.goto(usageUrl, {
@@ -177,8 +184,80 @@ example of what pTexts looks like.  we'll assume the first "% used" is 5 hour, a
     },
   };
   fs.writeFileSync(
-    USAGE_CACHE_FILEPATH,
+    USAGE_CACHE_FILEPATH_CLAUDE,
     JSON.stringify(usage, null, 2),
     "utf-8",
   );
 };
+
+export const setOllamaCachedUsage = async (): Promise<void> => {
+  const browser = await launchBrowser();
+  const page: Page = await preparePage(browser, "ollama.com");
+
+  const usageUrl = "https://ollama.com/settings";
+  await page.goto(usageUrl, {
+    waitUntil: "domcontentloaded",
+    timeout: 15000,
+  });
+
+  let timeout = 10000;
+  let spanTexts: string[] = [];
+  while (timeout > 0 && spanTexts.length < 2) {
+    await sleep(500);
+    timeout -= 500;
+    spanTexts = await page.evaluate(() => {
+      const paragraphs = document.querySelectorAll("span");
+      const texts = Array.from(paragraphs)
+        .map((s) => s.textContent)
+        .filter((t): t is string => t.includes("% used"));
+      return texts;
+    });
+  }
+  const fiveHourUsedPercent = parseFloat(spanTexts[0]!.split("%")[0]!);
+  const sevenDayUsedPercent = parseFloat(spanTexts[1]!.split("%")[0]!);
+
+  const divs = await page.evaluate(() => {
+    const divs = document.querySelectorAll("div.local-time");
+    //for each div, get the "data-time" attribute
+    const times = Array.from(divs).map((div) => div.getAttribute("data-time"));
+    return times;
+  });
+  const fiveHourEndTime = new Date(divs[0]!);
+  const fiveHourStartTime = new Date(
+    fiveHourEndTime.getTime() - 5 * 60 * 60 * 1000,
+  );
+  const fiveHourElapsedPercent =
+    (100 * (new Date().getTime() - fiveHourStartTime.getTime())) /
+    (fiveHourEndTime.getTime() - fiveHourStartTime.getTime());
+
+  const sevenDayEndTime = new Date(divs[1]!);
+  const sevenDayStartTime = new Date(
+    sevenDayEndTime.getTime() - 7 * 24 * 60 * 60 * 1000,
+  );
+  const sevenDayElapsedPercent =
+    (100 * (new Date().getTime() - sevenDayStartTime.getTime())) /
+    (sevenDayEndTime.getTime() - sevenDayStartTime.getTime());
+
+  await browser.close();
+  if (timeout <= 0) {
+    return;
+  }
+
+  const usage = {
+    fiveHour: {
+      usedPercent: fiveHourUsedPercent,
+      elapsedPercent: Math.round(fiveHourElapsedPercent),
+    },
+    sevenDay: {
+      usedPercent: sevenDayUsedPercent,
+      elapsedPercent: Math.round(sevenDayElapsedPercent),
+    },
+  };
+  fs.writeFileSync(
+    USAGE_CACHE_FILEPATH_OLLAMA,
+    JSON.stringify(usage, null, 2),
+    "utf-8",
+  );
+};
+
+await setOllamaCachedUsage();

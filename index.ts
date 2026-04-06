@@ -30,7 +30,6 @@ interface ClaudeInput {
 
 const parseInput = (): ClaudeInput => {
   const json = JSON.parse(process.argv[2] || "");
-
   if (!json || typeof json !== "object") {
     console.error("Invalid input: Expected a JSON object");
     process.exit(1);
@@ -51,8 +50,8 @@ const twoCharNum = (num: number) => {
   return num;
 };
 
-const outputClaudeUsage = async () => {
-  const usage = await getCachedUsage();
+const outputClaudeUsage = async (isOllamaModel: boolean) => {
+  const usage = await getCachedUsage(isOllamaModel);
   if (usage) {
     const utilization_5H_upper = `${colors.green}5H ${barGraph(usage.fiveHour.usedPercent)}${colors.reset}`;
     // the "colors.green+reset" is necessary to prevent leading spaces from getting eaten by the terminal's trimming
@@ -82,19 +81,17 @@ const outputModelAndContext = async (input: ClaudeInput) => {
 const main = async () => {
   const input = parseInput();
   const model = input.model.display_name;
-  const isClaude = !model.toLowerCase().includes("minimax");
+  const isOllamaModel = model.toLowerCase().includes("cloud");
   await outputModelAndContext(input);
-  if (isClaude) {
-    try {
-      await outputClaudeUsage();
-    } catch (ex) {
-      const tempErrorLogPath = "/tmp/claude_usage_error.log";
-      fs.appendFileSync(
-        tempErrorLogPath,
-        `${new Date().toISOString()} - Error fetching usage data: ${ex}\n`,
-      );
-      console.error("Error fetching usage data:", ex);
-    }
+  try {
+    await outputClaudeUsage(isOllamaModel);
+  } catch (ex) {
+    const tempErrorLogPath = "/tmp/claude_usage_error.log";
+    fs.appendFileSync(
+      tempErrorLogPath,
+      `${new Date().toISOString()} - Error fetching usage data: ${ex}\n`,
+    );
+    console.error("Error fetching usage data:", ex);
   }
 };
 

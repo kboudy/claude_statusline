@@ -1,20 +1,28 @@
 # claude_statusline
 
-To install dependencies:
+## installing
 
-```bash
-bun install
+- add this to `~/.claude/settings.json`:
+
+```json
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  },
 ```
 
-To run:
+- create `~/.claude/statusline.sh` with the following content:
 
 ```bash
-bun run index.ts
+#!/bin/bash
+
+# Read JSON data that Claude Code sends to stdin
+input=$(cat)
+
+bun /home/keith/keith_apps/claude_statusline/index.ts "$input"
 ```
 
-This project was created using `bun init` in bun v1.3.9. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
-
-# crontab entry to run every minute:
+## crontab entry to run every minute:
 
 ```
 * * * * * /home/keith/keith_apps/claude_statusline/setCachedUsage_ifClaudeRunning.ts

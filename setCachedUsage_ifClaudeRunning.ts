@@ -12,7 +12,10 @@ await import("dotenv").then((dotenv) =>
   dotenv.config({ quiet: true, path: path.join(__dirname, ".env") }),
 );
 
-import { setCachedUsage } from "./playwright/get_usage";
+import {
+  setClaudeCachedUsage,
+  setOllamaCachedUsage,
+} from "./playwright/get_usage";
 
 const removeOldFirefoxCookies = () => {
   // cleanup: firefox cookies older than 5 mins
@@ -33,13 +36,20 @@ const removeOldFirefoxCookies = () => {
   }
 };
 
-// determine if claude process is running
-// ignore the remote-control session
 const isClaudeRunning = () => {
   const claudeProcessLines = Bun.spawnSync(["pgrep", "-a", "claude"])
     .stdout.toString()
     .split("\n")
-    .filter((line) => !line.includes("remote-control") && line.trim() !== "");
+    .filter((line) => !line.includes("cloud"));
+
+  return claudeProcessLines.length > 0;
+};
+
+const isOllamaClaudeRunning = () => {
+  const claudeProcessLines = Bun.spawnSync(["pgrep", "-a", "claude"])
+    .stdout.toString()
+    .split("\n")
+    .filter((line) => line.includes("cloud"));
 
   return claudeProcessLines.length > 0;
 };
@@ -61,5 +71,8 @@ if (thisScriptRunningCount() > 2) {
 
 removeOldFirefoxCookies();
 if (isClaudeRunning()) {
-  await setCachedUsage();
+  await setClaudeCachedUsage();
+}
+if (isOllamaClaudeRunning()) {
+  await setOllamaCachedUsage();
 }
